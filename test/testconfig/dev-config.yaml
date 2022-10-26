@@ -1,0 +1,37 @@
+loggers:
+- log:
+  kind: log
+  env:
+    logrus: Trace
+    httplog: True
+    gorm: True
+providers:
+- msad:
+  kind: msad
+  env:
+    tenant_id: hide
+    client_id: hide
+    client_secret: hide
+    admin_group_name: NeonAdmin
+servers:
+- http:
+  kind: http
+  env:
+    port: 1234
+    address: 0.0.0.0
+sqloptions:
+- sql:
+  kind: sql
+  env:
+    Max_Idle_Conns: 10
+    Max_Open_Conns: 100
+    Max_Lifetime: 1
+backends:
+- postgres:
+  kind: postgres
+  env:
+    user: test
+    pass: test
+    dbname: argonadmindb
+    host: localhost
+    port: 5432

@@ -1,0 +1,8 @@
+backends:
+- mysql:
+  kind: mysql
+  env:
+    mysqluser: argonadmin
+    mysqlpass: argonadmin
+    mysqldbname: argonadmindb
+

@@ -1,0 +1,8 @@
+backends:
+- postgres:
+  kind: postgres
+  env:
+    pguser: argonadmin
+    pass: argonadmin
+    pgdbname: argonadmindb
+    pghost: localhost

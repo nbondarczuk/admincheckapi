@@ -1,0 +1,461 @@
+openapi: 3.0.0
+info:
+  version: "1.0"
+  title: Argon Admin Check API
+  description: >-
+    # Argon Admin Check API
+
+    ## Purpose
+
+    
+    The Argon Admin Check API checks if the given JWT token
+    belongs to an admin user of a client. Therefore it extracts from
+    the JWT token a list of groups or roles and it check in the backend database
+    if a given group or role is assigned to this client.
+
+    
+    It provides 3 groups of access methods:
+
+
+    - **token**: The JWT token is used to check if the owner of it is a admin group member.
+      
+      
+    - **client**: It uses the backend relational database to store the info about
+      client groups marked as admin groups.
+
+      
+    - **auth**: authorizes access to AD with MSAD library using credentials
+      like secret, certificate, user/password, code returning JWT token.
+
+
+servers:
+  - url: http://localhost:1234/api
+paths:
+  /client/{client}/admin/token:
+    parameters:
+      - schema:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '[a-zA-Z0-9]+'
+          example: Bentley
+        name: client
+        in: path
+        required: true
+    post:
+      description: Checks if token belongs to an admin role.
+      summary: CheckClientAdminToken
+      operationId: CheckClientAdminToken
+      tags:
+        - token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      admin:
+                        type: boolean
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      error:
+                        type: string
+                        pattern: '[a-zA-z0-9 ]+'
+                      message:
+                        type: string
+                        pattern: '[a-zA-Z0-9 ]+'
+                      httpstatus:
+                        type: string
+                        pattern: '[0-9]+'
+  /client/{client}/group/{group}/admin:
+    parameters:
+      - name: client
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '[a-zA-z0-9]+'
+          example: Bentley
+      - name: group
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '[a-zA-z0-9-]+'
+          example: Admin-Group
+    get:
+      description: Checks if group belongs to an admin role. No token in payload need, only DB access done.
+      summary: CheckClientGroupAdmin
+      operationId: CheckClientGroupAdmin
+      tags:
+        - client
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      admin:
+                        type: boolean
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      error:
+                        type: string
+                        pattern: '[a-zA-Z0-9 ]+'
+                      message:
+                        type: string
+                        pattern: '[a-zA-Z0-9 ]+'
+                      httpstatus:
+                        type: string
+                        pattern: '[0-9]+'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      error:
+                        type: string
+                        pattern: '[a-zA-Z0-9 ]+'
+                      message:
+                        type: string
+                        pattern: '[a-zA-Z0-9 ]+'
+                      httpstatus:
+                        type: string
+                        pattern: '[0-9]+'
+  /client/{client}/admin/group:
+    parameters:
+      - name: client
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '[a-zA-Z0-9]+'
+          example: Bentley
+    get:
+      description: Returns a list of admin groups of the client. The list may be empty so no error 404 needed.
+      summary: ReadClientAdminGroup
+      operationId: ReadClientAdminGroup
+      tags:
+        - client
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      count:
+                        type: integer
+                      groups:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            group:
+                              type: string
+                              minLength: 1
+                              maxLength: 80
+                              pattern: '[a-zA-z0-9]+'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      error:
+                        type: string
+                        pattern: '[a-zA-z0-9 ]+'
+                      message:
+                        type: string
+                        pattern: '[a-zA-z0-9 ]+'
+                      httpstatus:
+                        type: string
+                        pattern: '[0-9]+'
+  /client/{client}/admin/group/{group}:
+    parameters:
+      - name: client
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '[a-zA-z0-9]+'
+          example: Bentley
+      - name: group
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '[a-zA-z0-9-]+'
+          example: Admin-Group
+    post:
+      description: Links client with group in the local DB.
+      summary: CreateClientAdminGroup
+      operationId: CreateClientAdminGroup
+      tags:
+        - client
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      count:
+                        type: integer
+                      groups:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            group:
+                              type: string
+                              pattern: '[a-zA-z0-9-]+'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      error:
+                        type: string
+                        pattern: '[a-zA-z0-9 ]+'
+                      message:
+                        type: string
+                        pattern: '[a-zA-z0-9 ]+'
+                      httpstatus:
+                        type: string
+                        pattern: '[0-9]+'
+    delete:
+      description: Removes a link of a client with a group from local DB.
+      summary: DeleteClientAdminGroup
+      operationId: DeleteClientAdminGroup
+      tags:
+        - client
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      count:
+                        type: integer
+                      groups:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            group:
+                              type: string
+                              pattern: '[a-zA-z0-9-]+'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      error:
+                        type: string
+                        pattern: '[a-zA-z0-9 ]+'
+                      message:
+                        type: string
+                        pattern: '[a-zA-z0-9 ]+'
+                      httpstatus:
+                        type: string
+                        pattern: '[0-9]+'                              
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      error:
+                        type: string
+                        pattern: '[a-zA-z0-9 ]+'
+                      message:
+                        type: string
+                        pattern: '[a-zA-z0-9 ]+'
+                      httpstatus:
+                        type: string
+                        pattern: '[0-9]+'
+  /client/{client}/admin/auth/{method}:
+    parameters:
+      - schema:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '[a-zA-Z0-9]+'
+          example: Bentley
+        name: client
+        in: path
+        required: true
+      - schema:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: '[a-z]+'
+          example: secret
+        name: method
+        in: path
+        required: true        
+    post:
+      description: Authorizes the user using MSAD returning JWT token
+      summary: CheckClientAdminAuth
+      operationId: CheckClientAdminAuth
+      tags:
+        - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      admin:
+                        type: boolean
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      error:
+                        type: string
+                        pattern: '[a-zA-z0-9 ]+'
+                      message:
+                        type: string
+                        pattern: '[a-zA-Z0-9 ]+'
+                      httpstatus:
+                        type: string
+                        pattern: '[0-9]+'                        
+tags:
+  - name: token
+    description: Operations related to JWT token check for admin group
+  - name: client
+    description: CRUD Operations on local client DB
+  - name: auth
+    description: Operations related to exchange of credential into a JWT token with MSAD    
+externalDocs:
+  url: http://swagger.io
+  description: Find out more about Swagger

@@ -1,0 +1,13 @@
+TARGET := admincheckapi
+VERSION = $(shell git describe --tags)
+BUILD = $(shell date +"%F_%T_%Z")
+REVISION = $(shell git log --pretty=format:"%H" --name-status HEAD^..HEAD | head -1)
+
+LDFLAGS = "-w -extldflags '-static -ldl' -X main.version=$(VERSION) -X main.build=$(BUILD) -X main.revision=$(REVISION)"
+
+SHELL := /bin/sh
+
+OS = $(shell go env GOOS)
+OS_ARCH = $(shell go env GOARCH)
+GO_PATH = $(shell go env GOPATH)
+

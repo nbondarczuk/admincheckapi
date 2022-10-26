@@ -1,0 +1,7 @@
+FROM postgres
+
+RUN apt update -y && apt install -y pgstat 
+
+COPY ./heartbeat.sh /
+
+CMD [ "/heartbeat.sh" ]
