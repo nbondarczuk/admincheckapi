@@ -2,17 +2,28 @@ loggers:
 - log:
   kind: log
   env:
-    logrus: Info
+    logrus: Debug
     httplog: True
     gorm: False
 providers:
 - msad:
   kind: msad
   env:
-    tenant_id: hide
-    client_id: hide
-    client_secret: hide
-    admin_group_name: hide
+    tenant_id: <MSAD_TENANT_ID>
+    client_id: <MSAD_CLIENT_ID>
+    client_secret: <MSAD_CLIENT_SECRET>
+    authority: <MSAD_AUTHORITY>
+    scopes: <MSAD_SCOPES>
+    admin_group_name: ArgonAdmin
+    use_group_name_pattern: False
+- aws:
+  kind: aws
+  env:
+    use_secret_store: True
+    region: <AWS_REGION>
+    access_key_id: <AWS_ACCESS_KEY_ID>
+    secret_access_key: <AWS_SECRET_ACCESS_KEY>
+    secret_name_prefix: c1secret_
 servers:
 - http:
   kind: http

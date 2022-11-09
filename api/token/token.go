@@ -1,4 +1,3 @@
-
 // package jwk implements utilities related validating and parsing JWTs
 //
 // JWTs signed with RS256 signatures are validated against
@@ -13,21 +12,29 @@ import (
 	"fmt"
 	"regexp"
 
+	"admincheckapi/api/token/jwk"
+
 	jwt "github.com/golang-jwt/jwt/v4"
 	log "github.com/sirupsen/logrus"
-	"admincheckapi/api/token/jwk"
 )
 
 // Token is a container for original token and interesting claims
+// so far tid (tokenId) and groups are of interest
 type (
 	Token struct {
 		TokenPayload []byte
 		Groups       []string
+		Tid          string
+		Oid          string
+		Idtyp        string
 	}
 
 	msTokenClaims struct {
 		jwt.StandardClaims
 		Groups []string `json:"groups,omitempty"`
+		Tid    string   `json:"tid,omitempty"`
+		Oid    string   `json:"oid,omitempty"`
+		Idtyp  string   `json:"idtyp,omitempty"`
 	}
 )
 
@@ -38,21 +45,39 @@ func NewToken(payload []byte) (Token, error) {
 		return Token{}, err
 	}
 
-	return Token{TokenPayload: payload, Groups: claims.Groups}, nil
-}
-
-// AdminGroup extracts roles as group fields of the JSON encoded JWT token - first one only
-func (t Token) AdminGroup() (string, error) {
-	if len(t.Groups) == 0 {
-		return "", fmt.Errorf("No admin group found in the token")
-	}
-
-	return t.Groups[0], nil
+	return Token{TokenPayload: payload,
+		Groups: claims.Groups,
+		Tid:    claims.Tid,
+		Oid:    claims.Oid,
+		Idtyp:  claims.Idtyp}, nil
 }
 
 // AdminGroups gets all admin groups found in the token
 func (t Token) AdminGroups() ([]string, error) {
 	return t.Groups, nil
+}
+
+// TenantId is needed to log into client's organization
+func (t Token) TenantId() (string, error) {
+	return t.Tid, nil
+}
+
+// Object Id in the Microsoft identity system, in this case, a user account or an application.
+// In MS Tokens it's the "oid" field.
+// Returns String, a GUID
+func (t Token) ObjectId() (string, error) {
+	return t.Oid, nil
+}
+
+// Check if the token was issued to an application of a user.
+// idtyp is an optional claim in the Microsoft identity system - used to distinguish between app-only
+// access tokens and access tokens for users.
+// For applicaions idtyp = "app", for users is not included.
+func (t Token) IsApp() (bool, error) {
+	if t.Idtyp == "app" {
+		return true, nil
+	}
+	return false, nil
 }
 
 // parse JWT token, attempt sig verification vs. public key from JwkSetCache, returns token claims and err if any
@@ -85,7 +110,7 @@ func parseJWTClaims(tokenStr string) (*msTokenClaims, error) {
 				log.Infof("public key not found in cache, attempting to parse without sig verification, kid: [%s]", fmt.Sprint(kid))
 				return nil, fmt.Errorf("no public key found for kid: [%s]", kid)
 			}
-			log.Infof("public key found, attempting to parse with sig verification")
+			log.Debugf("public key found, attempting to parse with sig verification")
 			return rsaPublicKey, nil
 		}
 	})
@@ -96,7 +121,7 @@ func parseJWTClaims(tokenStr string) (*msTokenClaims, error) {
 			// log the token for potential security analysis.
 			// Return &tokenClaims and let the caller decide what to do with it.
 			log.Warnf("JWT parsed, found issues: [%s], token: [%s]", err.Error(), token.Raw)
-			return &tokenClaims, err
+			return &tokenClaims, nil
 		} else {
 			log.Infof("JWT parsing error: [%s]", err.Error())
 			return nil, err

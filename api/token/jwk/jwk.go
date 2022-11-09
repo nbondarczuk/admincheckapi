@@ -4,16 +4,14 @@
 // keys are provided by the issuer's API, and rarely change.
 // MS (Azure) recommends updating them every 24h, and on demand if new keys
 // are used.
-//
+// The implemented JWK cache will be updated if older than acceptable age.
+// Updates will be forced on demand if keys are not found in current Cache.
+// Updater prevents updates more frequent than allowed.,
 // ToDo:
-// * SEC: source API cert verification.  Currently depends on OS Cert Store
-// * FUNC: auto update if last update date > 24h ago - perhaps upon first kid not found req.
-// * FUNC/SEC: update on demand (if last update > 5min ago, to protect against flood attacks)
-// * PERF: hold ongoing (get) RsaPubKey requests if JWK Set is being updated, at least for 2x
-//   API Timeout
-// * package is made to handle MS key store, other JWKs may have different ways of doing it.
-//   Consider compatibility with other IDPs.
-
+//   - PERF: cache cleanup.  Current implementation only updates and adds to cache.
+//   - SEC: source API cert verification.  Currently depends on OS Cert Store
+//   - package is made to handle MS key store, other JWKs may have different ways of doing it.
+//     Consider compatibility with other IDPs.
 package jwk
 
 import (
@@ -26,6 +24,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -49,23 +48,66 @@ type JWK struct {
 	Issuer string   `json:"issuer"`
 }
 
-// in-memory cache of current JWKs
-// Map - key: kid; value: JWK
-type JwkSetMap map[string]JWK
+// structure for the in-memory cache of current JWKs
+// jwkMap - key: kid; value: JWK
+type JwkSetCache struct {
+	jwkMap             map[string]JWK
+	lastUpdatedAt      int64
+	apiUri             string
+	apiTimeoutMs       int
+	maxRefreshInterval int
+	minRefreshInterval int
+	mu                 sync.Mutex
+}
 
 // collecion of keys, as returned by MS Azure API
 type JwkSet struct {
 	Keys []JWK `json:"keys"`
 }
 
-var JWKSetCache = make(JwkSetMap)
+// create new JWK Cache - used by unit tests to init JWK Cache for various scenarios.
+// Normally JWKSet Cache is is initialized by config.go using jwk.InitJWKCache()
+// CONSIDER:  creation and initialization should perhaps be done in config, not here.
+func NewJWKCache(apiUri string, apiTimeoutMs, maxRefreshInterval, minRefreshInterval int) *JwkSetCache {
 
+	jsc := &JwkSetCache{
+		jwkMap:             make(map[string]JWK),
+		apiUri:             apiUri,
+		apiTimeoutMs:       apiTimeoutMs,
+		maxRefreshInterval: maxRefreshInterval,
+		minRefreshInterval: minRefreshInterval,
+	}
+	log.Infof("JWK Cache crated for %v", apiUri)
+	return jsc
+}
+
+var JWKSetCache JwkSetCache
+
+// Initialize JWK Cache
+// recommended values for azure: timeout: 1000ms
+// maxRefreshInterval: 300s, minRefreshInterval: 86400
+// AZURE API: "https://login.microsoftonline.com/common/discovery/v2.0/keys"
 func InitJWKCache() {
-	msJwkSourceApi := "https://login.microsoftonline.com/common/discovery/v2.0/keys"
-	err := JWKSetCache.Update(msJwkSourceApi, 1000)
+	//TODO: move JWK Cache settings to global config
+	apiUri := "https://login.microsoftonline.com/common/discovery/v2.0/keys"
+	maxRefreshIntervalSec := 300
+	minRefreshIntervalSec := 86400
+	apiTimeoutMs := 1000
+
+	JWKSetCache = JwkSetCache{
+		jwkMap:             make(map[string]JWK),
+		apiUri:             apiUri,
+		apiTimeoutMs:       apiTimeoutMs,
+		maxRefreshInterval: maxRefreshIntervalSec,
+		minRefreshInterval: minRefreshIntervalSec,
+	}
+	log.Infof("JWK Cache crated for %v", apiUri)
+
+	err := JWKSetCache.Update()
 	if err != nil {
 		log.Fatalf("Error loading JWK Set Cache [%s]", fmt.Sprint(err))
 	}
+
 }
 
 // Acquire current JWK Set from <uri> API and populate JwkSet struct with JWKs.
@@ -74,9 +116,7 @@ func InitJWKCache() {
 // timeouteMils: timeout, reasonable: 500ms-1000ms
 // Azure key store:
 // https://login.microsoftonline.com/common/discovery/v2.0/keys
-// !TODO: this URI should be a part of standard configuration
-// !CONSIDER: consider moving timeout to global config
-func (j *JwkSet) UpdateFromSource(uri string, timeoutMils int) error {
+func (j *JwkSet) updateFromSource(uri string, timeoutMils int) error {
 
 	c := http.Client{Timeout: time.Duration(timeoutMils) * time.Millisecond}
 	resp, err := c.Get(uri)
@@ -104,19 +144,28 @@ func (j *JwkSet) UpdateFromSource(uri string, timeoutMils int) error {
 	return nil
 }
 
-// update JwkSetMap with contents from the source API (i.e. microsoft)
-// Params:
-// uri - source JWK API address
-// timeoutMils - timeout in milliseconds (suggested > 500ms)
+// update JwkSetCache with contents from the source API (i.e. microsoft)
+//
 // Custom errors:
 // "JWK source error: nothing received, cache not updated"
-func (j JwkSetMap) Update(uri string, timeoutMils int) error {
+func (j *JwkSetCache) Update() error {
+
+	//block parallel attempts to update cache, one update is enough
+	j.mu.Lock()
+	defer j.mu.Unlock()
+
+	//verify last update timestamp vs. max update interval
+	//this is to prevent high frequency updates - respect the source api!
+	if j.lastUpdatedAt >= time.Now().Unix()-int64(j.maxRefreshInterval) {
+		log.Infof("JWK Cache max refresh interval exceeded, current cache is %vs old.", time.Now().Unix()-j.lastUpdatedAt)
+		return nil
+	}
 
 	var newJwkSet JwkSet
 
 	// get new JWKs from source API
-	log.Debugf("JWK: getting new keys from API.")
-	err := newJwkSet.UpdateFromSource(uri, timeoutMils)
+	log.Debugf("JWK: getting new keys from MS API.")
+	err := newJwkSet.updateFromSource(j.apiUri, j.apiTimeoutMs)
 	if err != nil {
 		log.Errorf(fmt.Sprint(err))
 		return errors.New("JWK: source error: nothing received, cache not updated")
@@ -125,12 +174,13 @@ func (j JwkSetMap) Update(uri string, timeoutMils int) error {
 	// add new keys from source into JWKSetCache
 	newKeyCounter := 0
 	for _, sourceKey := range newJwkSet.Keys {
-		if _, ok := j[sourceKey.Kid]; !ok {
+		if _, ok := j.jwkMap[sourceKey.Kid]; !ok {
 			//new keys, update map
-			j[sourceKey.Kid] = sourceKey
+			j.jwkMap[sourceKey.Kid] = sourceKey
 			newKeyCounter++
 		}
 	}
+	j.lastUpdatedAt = time.Now().Unix()
 	if newKeyCounter > 0 {
 		log.Debugf("JWK: JWKSetCache updated with %v new JWKs.", newKeyCounter)
 	} else {
@@ -144,9 +194,9 @@ func (j JwkSetMap) Update(uri string, timeoutMils int) error {
 // custom errors:
 // "kid not found in JWKSetCache"
 // "certificate filed empty for given kid"
-func (j JwkSetMap) X509cert(kid string) (string, error) {
+func (j *JwkSetCache) x509cert(kid string) (string, error) {
 
-	jwk, ok := j[kid]
+	jwk, ok := j.jwkMap[kid]
 	if !ok {
 		return "", errors.New("kid not found in JWKSetCache")
 	}
@@ -167,12 +217,36 @@ func (j JwkSetMap) X509cert(kid string) (string, error) {
 }
 
 // RSA Public Key for a given key id (kid) in JwkSetMap
-func (j JwkSetMap) RsaPubKey(kid string) (*rsa.PublicKey, error) {
+func (j *JwkSetCache) RsaPubKey(kid string) (*rsa.PublicKey, error) {
+
+	//verify last update timestamp vs. min update interval
+	//this is to force an update if cache is too stale.
+	if j.lastUpdatedAt < time.Now().Unix()-int64(j.minRefreshInterval) {
+		log.Infof("JWK Cache is stale, forcing update.")
+		err := j.Update()
+		if err != nil {
+			log.Warnf("Problems updating JWK Cache, cache is stale. [%vs]",
+				time.Now().Unix()-j.lastUpdatedAt)
+		}
+
+	}
+
+	//check if kid exists in current cache and force an update if kid not found
+	//and cache is not fresh
+	_, ok := j.jwkMap[kid]
+	if !ok && j.lastUpdatedAt < time.Now().Unix()-int64(j.maxRefreshInterval) {
+		log.Infof("kid [%v] not found in JWK Cache, updating cache", kid)
+		err := j.Update()
+		if err != nil {
+			return nil, errors.New("kid not found in JWKSetCache")
+		}
+	}
+
 	var err error
 
 	//retrieve PEM x.509 Cert from JWKSetCache
 	var pemCert string
-	pemCert, err = j.X509cert(kid)
+	pemCert, err = j.x509cert(kid)
 	if err != nil {
 		return nil, err
 	}

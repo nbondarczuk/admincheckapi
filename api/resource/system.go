@@ -2,8 +2,8 @@ package resource
 
 type (
 	Stat struct {
-		Alloc      uint64 `json:"alloc"`
-		TotalAlloc uint64 `json:"totalalloc"`
+		Alloc      uint64 `json:"alloc"`      // Mb(s)
+		TotalAlloc uint64 `json:"totalalloc"` // Mb(s)
 		Sys        uint64 `json:"sys"`
 		NumGC      uint32 `json:"numgc"`
 	}

@@ -12,6 +12,7 @@ import (
 
 	"admincheckapi/api/config"
 	"admincheckapi/api/router"
+	"admincheckapi/api/stat"
 )
 
 // Server stores all needed fields for an API server
@@ -71,7 +72,11 @@ func (s Server) Run() {
 	log.Traceln("Begin: Run")
 
 	log.Infoln("Starting HTTP server: " + s.server.Addr)
+	stat.SetHealthy(stat.ServiceHealthy)
+	stat.SetAlive(stat.ServiceAlive)
 	if err := s.server.ListenAndServe(); err != http.ErrServerClosed {
+		stat.SetHealthy(stat.ServiceError)
+		stat.SetAlive(stat.ServiceDead)
 		log.Errorln("Error in ListenAndServe: " + err.Error())
 	}
 

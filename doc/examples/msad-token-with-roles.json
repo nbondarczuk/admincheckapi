@@ -1,0 +1,29 @@
+{
+  "typ": "JWT",
+  "alg": "RS256",
+  "x5t": "2ZQpJ3UpbjAYXYGaXEJl8lV0TOI",
+  "kid": "2ZQpJ3UpbjAYXYGaXEJl8lV0TOI"
+}.{
+  "aud": "api://042d807d-a18b-4965-a824-eff7385607e6",
+  "iss": "https://sts.windows.net/23d4250e-3711-48e1-8dfe-d27f285154a1/",
+  "iat": 1662985808,
+  "nbf": 1662985808,
+  "exp": 1662989708,
+  "aio": "E2ZgYOj9fSyBNSiy4etF28xfkTJvAA==",
+  "appid": "5359e6a3-dc1e-4ac1-8073-d0e658a002c4",
+  "appidacr": "1",
+  "groups": [
+    "2e12d1bb-c48e-42cd-b4cd-573385e4a9dc"
+  ],
+  "idp": "https://sts.windows.net/23d4250e-3711-48e1-8dfe-d27f285154a1/",
+  "oid": "c603afb0-cc85-4633-aac7-b4abc843f203",
+  "rh": "0.AYIADiXUIxE34UiN_tJ_KFFUoX2ALQSLoWVJqCTv9zhWB-aVAAA.",
+  "roles": [
+    "argonAdminRole1",
+    "testRole1"
+  ],
+  "sub": "c603afb0-cc85-4633-aac7-b4abc843f203",
+  "tid": "23d4250e-3711-48e1-8dfe-d27f285154a1",
+  "uti": "u4_Ynt-vJ0-Vy6NMdXQxAA",
+  "ver": "1.0"
+}.[Signature]

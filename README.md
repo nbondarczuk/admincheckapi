@@ -61,6 +61,7 @@ Additional technical methods are to be added like:
 - cmd: main function location
 - api/secretstore: keeps JWT token of the application
 - api/token: handles group id extraction from JWT token
+- api/token/jwk: maintains local cache of certificates used for verification of JWTs 
 - api/graph: method used to acces Azure graph to decode group id to group name
 - api/config: loading config from local yaml file and oeverwriting values with env variables
 - api/backend: handles basic relational database access

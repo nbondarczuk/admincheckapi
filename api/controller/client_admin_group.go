@@ -7,9 +7,10 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
+	"admincheckapi/api/config"
 	"admincheckapi/api/repository"
 	"admincheckapi/api/resource"
-	"admincheckapi/api/config"
+	"admincheckapi/api/stat"	
 )
 
 //
@@ -19,6 +20,8 @@ import (
 func CheckClientGroupAdmin(w http.ResponseWriter, r *http.Request) {
 	log.Traceln("Begin: CheckClientGroupAdmin")
 
+	w.Header().Set("X-Request-Id", stat.RequestId())
+	
 	log.Debugf("Handling request [%s] %s %s %s",
 		r.Method,
 		r.Host,
@@ -82,15 +85,16 @@ func CheckClientGroupAdmin(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	if jstr, err := json.Marshal(&reply); err != nil {
+	jstr, err := json.Marshal(&reply)
+	if err != nil {
 		displayAppError(w, EncoderJsonError,
 			"An error while marshalling data - "+err.Error(),
 			http.StatusInternalServerError)
 		return
-	} else {
-		log.Debugln("Reply: " + string(jstr))
-		writeResponseWithJson(w, http.StatusOK, jstr)
 	}
+	
+	log.Debugln("Reply: " + string(jstr))
+	writeResponseWithJson(w, http.StatusOK, jstr)
 
 	log.Traceln("End: CheckClientGroupAdmin")
 }
@@ -101,6 +105,8 @@ func CheckClientGroupAdmin(w http.ResponseWriter, r *http.Request) {
 func ReadClientAdminGroups(w http.ResponseWriter, r *http.Request) {
 	log.Traceln("Begin: ReadClientAdminGroups")
 
+	w.Header().Set("X-Request-Id", stat.RequestId())
+	
 	log.Debugf("Handling request [%s] %s %s %s",
 		r.Method,
 		r.Host,
@@ -155,15 +161,16 @@ func ReadClientAdminGroups(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	if jstr, err := json.Marshal(&reply); err != nil {
+	jstr, err := json.Marshal(&reply)
+	if err != nil {
 		displayAppError(w, EncoderJsonError,
 			"An error while marshalling data - "+err.Error(),
 			http.StatusInternalServerError)
 		return
-	} else {
-		log.Debugln("Reply: " + string(jstr))
-		writeResponseWithJson(w, http.StatusOK, jstr)
 	}
+
+	log.Debugln("Reply: " + string(jstr))
+	writeResponseWithJson(w, http.StatusOK, jstr)
 
 	log.Traceln("End: ReadClientAdminGroups")
 }
@@ -175,6 +182,8 @@ func ReadClientAdminGroups(w http.ResponseWriter, r *http.Request) {
 func CreateClientAdminGroup(w http.ResponseWriter, r *http.Request) {
 	log.Traceln("Begin: CreateClientAdminGroup")
 
+	w.Header().Set("X-Request-Id", stat.RequestId())
+	
 	log.Debugf("Handling request [%s] %s %s %s",
 		r.Method,
 		r.Host,
@@ -239,15 +248,16 @@ func CreateClientAdminGroup(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	if jstr, err := json.Marshal(&reply); err != nil {
+	jstr, err := json.Marshal(&reply)
+	if err != nil {
 		displayAppError(w, EncoderJsonError,
 			"An error while marshalling data - "+err.Error(),
 			http.StatusInternalServerError)
 		return
-	} else {
-		log.Debugln("Reply: " + string(jstr))
-		writeResponseWithJson(w, http.StatusOK, jstr)
 	}
+
+	log.Debugln("Reply: " + string(jstr))
+	writeResponseWithJson(w, http.StatusOK, jstr)
 
 	log.Traceln("End: CreateClientAdminGroup")
 }
@@ -259,6 +269,8 @@ func CreateClientAdminGroup(w http.ResponseWriter, r *http.Request) {
 func DeleteClientAdminGroup(w http.ResponseWriter, r *http.Request) {
 	log.Traceln("Begin: DeleteClientAdminGroup")
 
+	w.Header().Set("X-Request-Id", stat.RequestId())
+	
 	log.Debugf("Handling request [%s] %s %s %s",
 		r.Method,
 		r.Host,
@@ -323,15 +335,16 @@ func DeleteClientAdminGroup(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 
-	if jstr, err := json.Marshal(&reply); err != nil {
+	jstr, err := json.Marshal(&reply)
+	if err != nil {
 		displayAppError(w, EncoderJsonError,
 			"An error while marshalling data - "+err.Error(),
 			http.StatusInternalServerError)
 		return
-	} else {
-		log.Debugln("Reply: " + string(jstr))
-		writeResponseWithJson(w, http.StatusOK, jstr)
 	}
+	
+	log.Debugln("Reply: " + string(jstr))
+	writeResponseWithJson(w, http.StatusOK, jstr)
 
 	log.Traceln("End: DeleteClientAdminGroup")
 }
@@ -342,6 +355,8 @@ func DeleteClientAdminGroup(w http.ResponseWriter, r *http.Request) {
 func PurgeClientAdminGroups(w http.ResponseWriter, r *http.Request) {
 	log.Traceln("Begin: PurgeClientAdminGroups")
 
+	w.Header().Set("X-Request-Id", stat.RequestId())
+	
 	log.Debugf("Handling request [%s] %s %s %s",
 		r.Method,
 		r.Host,
@@ -377,15 +392,16 @@ func PurgeClientAdminGroups(w http.ResponseWriter, r *http.Request) {
 		Status: true,
 	}
 
-	if jstr, err := json.Marshal(&reply); err != nil {
+	jstr, err := json.Marshal(&reply)
+	if err != nil {
 		displayAppError(w, EncoderJsonError,
 			"An error while marshalling data - "+err.Error(),
 			http.StatusInternalServerError)
 		return
-	} else {
-		log.Debugln("Reply: " + string(jstr))
-		writeResponseWithJson(w, http.StatusOK, jstr)
 	}
+
+	log.Debugln("Reply: " + string(jstr))
+	writeResponseWithJson(w, http.StatusOK, jstr)
 
 	log.Traceln("End: PurgeClientAdminGroups")
 }

@@ -1,85 +1,99 @@
 package jwk_test
 
 import (
+	"admincheckapi/api/token/jwk"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
-
-	"admincheckapi/api/token/jwk"
 )
 
-// initialize JWKSetCache
-var JWKSetCache = make(jwk.JwkSetMap)
+func TestInitJWKCache(t *testing.T) {
 
-func TestGetJWKsFromSource(t *testing.T) {
+	jwk.InitJWKCache()
 
-	// positive tests
-
-	// expected non-zero length JwkSet (ie. some keys were returned, typically 8)
-	// testing against actuall API.  behave with respect!!!
-	testURI := "https://login.microsoftonline.com/common/discovery/v2.0/keys"
-	var newJwkSet jwk.JwkSet
-	err := newJwkSet.UpdateFromSource(testURI, 1000)
-	assert.GreaterOrEqual(t, len(newJwkSet.Keys), 1, "loading of JWKs from source failed")
-
-	// negative tests
-
-	// expected: connection error
-	testURI = "https://example-asdf.com/nonexistant"
-	err = newJwkSet.UpdateFromSource(testURI, 1000)
-	assert.ErrorContains(t, err, "API connection error", "TEST: expecting API connection error")
-
-	// expected: 404 NotFound
-	testURI = "https://login.microsoftonline.com/common/discovery/v2.0/keys123"
-	err = newJwkSet.UpdateFromSource(testURI, 1000)
-	assert.EqualError(t, err, "JWK Source API error: 404 Not Found", "TEST: expecting 404 error")
-
-	// expected timeout  (giving it 10ms to timeout)
-	testURI = "https://example.com"
-	err = newJwkSet.UpdateFromSource(testURI, 10)
-	assert.ErrorContains(t, err, "Timeout", "Timeout error")
+	err := jwk.JWKSetCache.Update()
+	assert.NoError(t, err, "expecting no error")
 }
 
-func TestUpdateJWKSetCache(t *testing.T) {
+func TestJWKCacheFrequentUpdates(t *testing.T) {
+	var JWKSetCache = jwk.NewJWKCache("https://login.microsoftonline.com/common/discovery/v2.0/keys",
+		1000, 2, 86400)
 
-	// positive tests
+	err := JWKSetCache.Update()
+	time.Sleep(time.Second * 1)
+	err = JWKSetCache.Update()
 
-	// expected: no errors, length of JWKSetCache >= then before test.
-	// testing against actual API, expecting ~9JWKs behave with respect!!!
-	testURI := "https://login.microsoftonline.com/common/discovery/v2.0/keys"
-	JwkSetCacheLenBeforeTest := len(JWKSetCache)
-	err := JWKSetCache.Update(testURI, 1000)
-
-	assert.GreaterOrEqual(t, len(JWKSetCache), JwkSetCacheLenBeforeTest, err)
-	assert.NoError(t, err, err)
+	assert.NoError(t, err, "expecting no error")
 }
 
-func TestJwkSetMapX509cert(t *testing.T) {
+// func TestInitJWKCache(t *testing.T) {
+// 	jwk.InitJWKCache()
+// 	assert.Equal(t, true, true)
+// }
 
-	//positive test, kid + cert exist
+// Case: negative, expected: connection error
+func TestUpdateJWKCache_ConErr(t *testing.T) {
+	var JWKSetCache = jwk.NewJWKCache("https://example-asdf.com/nonexistant",
+		1000, 300, 86400)
+	err := JWKSetCache.Update()
+	assert.ErrorContains(t, err, "JWK: source error:", "expecting source error")
+}
+
+// Case: negative, expected: 404 NotFound
+func TestUpdateJWKCache_404Err(t *testing.T) {
+	var JWKSetCache = jwk.NewJWKCache("https://login.microsoftonline.com/common/discovery/v2.0/keys123",
+		1000, 300, 86400)
+	err := JWKSetCache.Update()
+	assert.ErrorContains(t, err, "JWK: source error:", "expecting source error")
+}
+
+// Case: negative, expected timeout  (giving it 10ms to timeout)
+func TestUpdateJWKCache_TimeoutErr(t *testing.T) {
+	var JWKSetCache = jwk.NewJWKCache("https://login.microsoftonline.com/common/discovery/v2.0/keys123",
+		50, 300, 86400)
+	err := JWKSetCache.Update()
+	assert.ErrorContains(t, err, "JWK: source error:", "expecting source error")
+}
+
+func TestJwkCacheRsaPubKey(t *testing.T) {
+
+	//positive test, kid + key exist.
 	testkid := "2ZQpJ3UpbjAYXYGaXEJl8lV0TOI"
-	cert, err := JWKSetCache.X509cert(testkid)
-	assert.GreaterOrEqual(t, len(cert), 100, err)
-	assert.NoError(t, err, err)
+	pubKeyExpStr := "24270816892089731719543783751432048815491545991257707613897766129285086092017663113913065374578252866292844529129303576012291981496377741717415683430954480719297040237552883183880720525825059504957853986049056158452751101633284726834183143745634822061761330491404604872173147765504606958311929588316683430193995492355659914947719650469297035699306817588668110003001642212415645738806065451691699269723426112951520848277600352153453283413356059207174622264137605364529710378358949775695884543447084486374661976470988089538432223651073995367128692155111525981268505073899618934526964112047508332751054877035214512639273"
+
+	var JWKSetCache = jwk.NewJWKCache("https://login.microsoftonline.com/common/discovery/v2.0/keys",
+		1000, 3, 5)
+	err := JWKSetCache.Update()
+
+	pubKey, err := JWKSetCache.RsaPubKey(testkid)
+	assert.Equal(t, fmt.Sprint(pubKey.N), pubKeyExpStr, "should find a key in JWK Set Cache")
+	assert.NoError(t, err, "expecting no errors")
 
 	//negative test, kid not in JWKSetCache
-	cert, err = JWKSetCache.X509cert("noSuchKid")
+	_, err = JWKSetCache.RsaPubKey("noSuchKid")
+	assert.ErrorContains(t, err, "kid not found", "nonexistent kid found in JWKSetCache")
 
-	assert.ErrorContains(t, err, "kid not found", "test error: nonexistent kid found in JWKSetCache")
+	time.Sleep(time.Second * 6)
+	pubKey, err = JWKSetCache.RsaPubKey(testkid)
+	assert.NoError(t, err, "expecting no errors")
 
 }
 
-func TestJwkSetMapRsaPubKey(t *testing.T) {
+func TestJwkCacheRsaPubKeyWithUpdate(t *testing.T) {
 
-	//positive test, kid + key exist
-	testkid := "2ZQpJ3UpbjAYXYGaXEJl8lV0TOI"
-	_, err := JWKSetCache.RsaPubKey(testkid)
-	//assert.GreaterOrEqual(t, len(cert), 100, err)
-	assert.NoError(t, err, err)
+	//positive test, kid + key exist.
+	testkid := "noSuchKid"
 
+	var JWKSetCache = jwk.NewJWKCache("https://login.microsoftonline.com/common/discovery/v2.0/keys",
+		1000, 3, 10)
+	err := JWKSetCache.Update()
+
+	time.Sleep(time.Second * 4)
+	_, err = JWKSetCache.RsaPubKey(testkid)
 	//negative test, kid not in JWKSetCache
-	_, err = JWKSetCache.RsaPubKey("noSuchKey")
-
-	assert.ErrorContains(t, err, "kid not found", "test error: nonexistent kid found in JWKSetCache")
+	_, err = JWKSetCache.RsaPubKey("noSuchKid")
+	assert.ErrorContains(t, err, "kid not found", "nonexistent kid found in JWKSetCache")
 
 }

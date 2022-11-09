@@ -1,9 +1,11 @@
 package auth
 
 import (
+	"fmt"
 	"context"
 
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/confidential"
+	log "github.com/sirupsen/logrus"
 
 	"admincheckapi/api/auth/tokencache"	
 )
@@ -23,7 +25,7 @@ var (
 func acquireTokenClientSecret(claim Claim) (string, error) {
 	crd, err := confidential.NewCredFromSecret(claim.ClientSecret)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Error creating credentials with secret")
 	}
 
 	app, err := confidential.New(claim.ClientID,
@@ -31,7 +33,7 @@ func acquireTokenClientSecret(claim Claim) (string, error) {
 		confidential.WithAuthority(claim.Authority),
 		confidential.WithAccessor(cacheAccessor))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Error creating confidential")
 	}
 
 	result, err := app.AcquireTokenSilent(context.Background(), claim.Scopes)
@@ -39,7 +41,7 @@ func acquireTokenClientSecret(claim Claim) (string, error) {
 		result, err = app.AcquireTokenByCredential(context.Background(),
 			claim.Scopes)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("Error acquire tocken with credential")
 		}
 	}
 
@@ -48,9 +50,14 @@ func acquireTokenClientSecret(claim Claim) (string, error) {
 
 // NewAuthMethodSecret creates new object with original claim and a permit
 func NewAuthMethodSecret(claim Claim) (AuthMethodSecret, error) {
+	log.Debugf("Requested auth with claim: %+v", claim)
 	token, err := acquireTokenClientSecret(claim)
 	if err != nil {
-		return AuthMethodSecret{Claim{}, Permit{}}, err
+		return AuthMethodSecret{
+			Claim{},
+			Permit{},
+		},
+			fmt.Errorf("Error requesting token with secret claim: %+v", claim)
 	}
 
 	return AuthMethodSecret{claim, Permit{token}}, nil

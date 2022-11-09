@@ -8,10 +8,13 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"admincheckapi/api/token/jwk"
-	v "admincheckapi/api/version"	
+	v "admincheckapi/api/version"
 )
 
-var Setup *SetupValueSet
+var (
+	Setup             *SetupValueSet
+	configFileNamePtr *string
+)
 
 //
 // checkCmdLineArgs detects usage of cmd line args like -v (version info)
@@ -19,7 +22,8 @@ var Setup *SetupValueSet
 // on the screen with some key info.
 //
 func checkCmdLineArgs() {
-	v := flag.Bool("v", false, "version info")	
+	v := flag.Bool("v", false, "version info")
+	configFileNamePtr = flag.String("c", DEFAULT_CONFIG_FILE_NAME, "config file")
 	flag.Parse()
 
 	if *v {
@@ -34,8 +38,8 @@ func checkCmdLineArgs() {
 func Init(version, build, revision string) {
 	v.Set(version, build, revision)
 	checkCmdLineArgs()
-	
-	input, err := LoadConfigYamlFromFile(DEFAULT_CONFIG_FILE_NAME)
+
+	input, err := LoadConfigYamlFromFile(*configFileNamePtr)
 	if err != nil {
 		panic(err)
 	}
@@ -45,10 +49,12 @@ func Init(version, build, revision string) {
 		panic(err)
 	}
 
+	Setup.ConfigFileName = *configFileNamePtr
+
 	//
 	// Logging config based on config file or env variable
 	//
-	
+
 	logrus.SetLevel(Setup.LogLogrusLevel)
 	logrus.SetOutput(os.Stdout)
 	logrus.SetFormatter(&logrus.TextFormatter{
@@ -56,9 +62,9 @@ func Init(version, build, revision string) {
 		TimestampFormat: "2006-01-02T15:04:05.000000000Z07:00",
 	})
 
-	jwk.InitJWKCache()
-	
 	Setup.Log()
+
+	jwk.InitJWKCache()
 }
 
 //

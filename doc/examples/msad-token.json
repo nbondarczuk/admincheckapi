@@ -1,0 +1,31 @@
+{
+  "typ": "JWT",
+  "nonce": "10M2TJ43ccxPd6Pc0z0ocARcD0EWUqYIPm6HYbkVux8",
+  "alg": "RS256",
+  "x5t": "2ZQpJ3UpbjAYXYGaXEJl8lV0TOI",
+  "kid": "2ZQpJ3UpbjAYXYGaXEJl8lV0TOI"
+}.{
+  "aud": "00000003-0000-0000-c000-000000000000",
+  "iss": "https://sts.windows.net/3b79fa1e-9be3-41fe-a8f5-131df5978f73/",
+  "iat": 1662474038,
+  "nbf": 1662474038,
+  "exp": 1662477938,
+  "aio": "E2ZgYDCu8r58/Iimmf4kCwvtXzrTAQ==",
+  "app_displayname": "testing",
+  "appid": "3b0c33ac-93c9-4f6e-bc70-d508465155a0",
+  "appidacr": "1",
+  "idp": "https://sts.windows.net/3b79fa1e-9be3-41fe-a8f5-131df5978f73/",
+  "idtyp": "app",
+  "oid": "60c82809-13cb-4185-b5ee-8839a9cc64ab",
+  "rh": "0.AWAAHvp5O-Ob_kGo9RMd9ZePcwMAAAAAAAAAwAAAAAAAAABhAAA.",
+  "sub": "60c82809-13cb-4185-b5ee-8839a9cc64ab",
+  "tenant_region_scope": "EU",
+  "tid": "3b79fa1e-9be3-41fe-a8f5-131df5978f73",
+  "uti": "FNzD41ynjEGbvYOn25TrAA",
+  "ver": "1.0",
+  "wids": [
+    "0997a1d0-0d1d-4acb-b408-d5ca73121e90"
+  ],
+  "xms_tcdt": 1587261189,
+  "xms_tdbr": "EU"
+}.[Signature]

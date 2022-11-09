@@ -8,6 +8,7 @@ import (
 
 	"admincheckapi/api/auth"
 	"admincheckapi/api/resource"
+	"admincheckapi/api/stat"
 )
 
 //
@@ -16,6 +17,8 @@ import (
 func CheckClientAdminAuth(w http.ResponseWriter, r *http.Request) {
 	log.Traceln("Begin: CheckClientAdminAuth")
 
+	w.Header().Set("X-Request-Id", stat.RequestId())
+	
 	log.Debugf("Handling request [%s] %s %s %s",
 		r.Method,
 		r.Host,
@@ -68,17 +71,24 @@ func CheckClientAdminAuth(w http.ResponseWriter, r *http.Request) {
 	err = json.Unmarshal(payload, &request)
 	if err != nil {
 		displayAppError(w, PayloadReadError,
-			"Unable to read payload of the request",
+			"Unable to decode json payload of the request",
 			http.StatusInternalServerError)
 		return
 	}
-
+	log.Debugf("Got request: %+v", request)
+	
 	//
 	// Hit auth provider with auth request in order to obtain JWT token
 	//
 	
 	// structural equivalence of external type and internal one: same fields
-	var claim auth.Claim = auth.Claim(request.Data)
+	var claim auth.Claim
+	claim.ClientID = request.ClientID
+	claim.Authority = request.Authority
+	claim.Scopes = request.Scopes
+	claim.ClientSecret = request.ClientSecret
+	log.Debugf("Using claim: %+v", claim)
+	
 	am, err := auth.NewAuthMethod(method, claim)
 	if err != nil {
 		displayAppError(w, AuthError,
@@ -95,16 +105,17 @@ func CheckClientAdminAuth(w http.ResponseWriter, r *http.Request) {
 		Status: true,
 		Token: am.Token(),
 	}
-	
-	if jstr, err := json.Marshal(reply); err != nil {
+
+	jstr, err := json.Marshal(reply)
+	if err != nil {
 		displayAppError(w, EncoderJsonError,
 			"An error while marshalling data - "+err.Error(),
 			http.StatusInternalServerError)
 		return
-	} else {
-		log.Debugln("Reply: " + string(jstr))
-		writeResponseWithJson(w, http.StatusOK, jstr)
 	}
+	
+	log.Debugln("Reply: " + string(jstr))
+	writeResponseWithJson(w, http.StatusOK, jstr)
 
 	log.Traceln("End: CheckClientAdminAuth")
 }

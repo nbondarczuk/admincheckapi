@@ -29,3 +29,11 @@ func NewClientAdminGroupRepository(b backend.Backend) (AzureClientRepository, er
 func (r AzureClientRepository) ClientGroupName(id string) (string, error) {
 	return r.caller.GroupName(id)
 }
+
+//
+// ClientGroupId
+//
+func (r AzureClientRepository) ClientGroupId(name string) (string, error) {
+	return r.caller.GroupId(name)
+}
+
